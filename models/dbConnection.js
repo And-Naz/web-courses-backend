@@ -2,9 +2,9 @@ const path = require('path');
 const fs = require('fs');
 
 class DbConnection {
-	static readFileAsync = async (filePath) => {
+	static readFileAsync = async (fileName) => {
 		return await new Promise((res, rej) => {
-			fs.readFile(filePath, (err, data) => {
+			fs.readFile(path.resolve(__dirname, "jsonDB", fileName), (err, data) => {
 				if (err) {
 					return rej(err);
 				}
@@ -13,9 +13,9 @@ class DbConnection {
 		});
 	};
 
-	static writeFileAsync = async (filePath, data) => {
+	static writeFileAsync = async (fileName, data) => {
 		return await new Promise((res, rej) => {
-			fs.writeFile(filePath, data, (err) => {
+			fs.writeFile(path.resolve(__dirname, "jsonDB", fileName), data, (err) => {
 				if (err) {
 					return rej(err);
 				}
@@ -69,7 +69,7 @@ class DbConnection {
 	async update(updatedModel) {
 		try {
 			const data = await this.read();
-			
+
 			const updatedData = data.map(model => {
 				if (model.id === updatedModel.id) {
 					return { ...model, ...updatedModel };
