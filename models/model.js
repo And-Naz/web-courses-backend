@@ -1,11 +1,25 @@
 const DbConnection = require('./dbConnection');
 const OR = Symbol.for("Model.query.or");
-const AND = Symbol.for("Model.query.and");
 
-const getRecords = async (fileName) => {
-	const readBuffer = await DbConnection.readFileAsync(fileName);
-	const readJson = readBuffer.toString();
-	return JSON.parse(readJson);
+const readRecords = async (fileName) => {
+	try {
+		const readBuffer = await DbConnection.readFileAsync(fileName);
+		const readJson = readBuffer.toString();
+		return JSON.parse(readJson);
+	} catch (error) {
+		console.log(error)
+		return null;
+	}
+}
+
+const writeRecords = async (fileName, records) => {
+	try {
+		await DbConnection.writeFileAsync(fileName, JSON.stringify(records));
+		return true
+	} catch (error) {
+		console.log(error)
+		return false;
+	}
 }
 
 class Model {
@@ -15,18 +29,17 @@ class Model {
 	static get allFields() { return null; }
 
 	static async findByPk(pk) {
-		const readResult = await getRecords(this.fileName)
+		const readResult = await readRecords(this.fileName)
 		if (!readResult || readResult.length === 0) {
 			return null;
 		}
 		return readResult.find(record => record[this.primaryKey] === pk) || null;
 	}
-
 	static async findOne({ where }) {
 		if (typeof where !== 'object' || where === null) {
 			return null;
 		}
-		const readResult = await getRecords(this.fileName);
+		const readResult = await readRecords(this.fileName);
 		if (!readResult || readResult.length === 0) {
 			return null;
 		}
@@ -44,7 +57,7 @@ class Model {
 						}
 					)
 				})
-				callbacksArr.push(record => innerCallbacksArr.some(cb => cd(record)))
+				callbacksArr.push(record => innerCallbacksArr.some(cb => cb(record)))
 			})
 		}
 		const otherEntries = Object.entries(other)
@@ -57,18 +70,63 @@ class Model {
 					}
 				)
 			})
-			callbacksArr.push(record => innerCallbacksArr.every(cb => cd(record)))
+			callbacksArr.push(record => innerCallbacksArr.every(cb => cb(record)))
 		}
 		return readResult.find(record => callbacksArr.every(record))
 	}
-
-	static async update() {
-
+	static async update(data, { where }) {
+		if (typeof where !== 'object' || where === null || typeof data !== 'object' || data === null) {
+			return false;
+		}
+		const entries = Object.entries(where).filter(([key]) => this.uniqueFields.includes(key))
+		if (entries.length === 0) {
+			return false
+		}
+		const readResult = await readRecords(this.fileName);
+		if (!readResult || readResult.length === 0) {
+			return false;
+		}
+		const callbacksArr = [];
+		entries.forEach(([key, value]) => {
+			callbacksArr.push(
+				record => {
+					return record[key] === value;
+				}
+			)
+		})
+		const updatedResult = readResult.map(record => {
+			if (callbacksArr.every(cb => cb(record))) {
+				return { ...record, ...data }
+			}
+			return record
+		})
+		return await writeRecords(this.fileName, updatedResult);
 	}
-	static async destroy() { }
+	static async destroy({ where }) {
+		if (typeof where !== 'object' || where === null) {
+			return false;
+		}
+		const entries = Object.entries(where).filter(([key]) => this.uniqueFields.includes(key))
+		if (entries.length === 0) {
+			return false
+		}
+		const readResult = await readRecords(this.fileName);
+		if (!readResult || readResult.length === 0) {
+			return false;
+		}
+		const callbacksArr = [];
+		entries.forEach(([key, value]) => {
+			callbacksArr.push(
+				record => {
+					return record[key] === value;
+				}
+			)
+		})
+		const destroyResult = readResult.filter(record => !callbacksArr.every(cb => cb(record)))
+		return await writeRecords(this.fileName, destroyResult);
+	}
 	static async create() { }
 }
 
 module.exports = Model;
 module.exports.OR = OR;
-module.exports.AND = AND;

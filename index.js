@@ -38,8 +38,7 @@ app.delete("/", (req, res) => {
 app.listen(PORT, () => {
 	console.log(`Server run on ${PORT} port!`);
 	console.log(Token);
-	; (async () => {
-		const record = await Token.findByPk(1)
-		console.log(record);
+	;(async () => {
+		
 	})();
 });
