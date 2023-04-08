@@ -64,15 +64,11 @@ class Model {
 		if (otherEntries.length > 0) {
 			const innerCallbacksArr = [];
 			otherEntries.forEach(([key, value]) => {
-				innerCallbacksArr.push(
-					record => {
-						return record[key] === value;
-					}
-				)
-			})
-			callbacksArr.push(record => innerCallbacksArr.every(cb => cb(record)))
+				innerCallbacksArr.push(record => record[key] === value);
+			});
+			callbacksArr.push(record => innerCallbacksArr.every(cb => cb(record)));
 		}
-		return readResult.find(record => callbacksArr.every(record))
+		return readResult.find(record => callbacksArr.every(cb => cb(record)));
 	}
 	static async update(data, { where }) {
 		if (typeof where !== 'object' || where === null || typeof data !== 'object' || data === null) {

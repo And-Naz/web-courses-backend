@@ -37,8 +37,13 @@ app.delete("/", (req, res) => {
 
 app.listen(PORT, () => {
 	console.log(`Server run on ${PORT} port!`);
-	console.log(Token);
 	;(async () => {
-		
+		const findByPk = await Token.findByPk(1);
+		const findOne1 = await Token.findOne({ where: { id: 1 } });
+		const findOne2 = await Token.findOne({ where: { userId: 1 } });
+
+		console.log(findByPk);
+		console.log(findOne1);
+		console.log(findOne2);
 	})();
 });
