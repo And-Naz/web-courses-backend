@@ -2,9 +2,15 @@ const path = require('path');
 const fs = require('fs');
 
 class DbConnection {
-	static readFileAsync = async (fileName) => {
+	static folderNameDbRoot = "db";
+	static folderNameDbTables = "tables";
+	static folderNameDbConfigs = "configs";
+	static dbRoot = path.resolve(__dirname, DbConnection.folderNameDbRoot)
+	static tablesRoot = path.resolve(__dirname, DbConnection.folderNameDbRoot, DbConnection.folderNameDbTables);
+	static configsRoot = path.resolve(__dirname, DbConnection.folderNameDbRoot, DbConnection.folderNameDbConfigs);
+	static readFileAsync = async (fileName, root) => {
 		return await new Promise((res, rej) => {
-			fs.readFile(path.resolve(__dirname, "jsonDB", fileName), (err, data) => {
+			fs.readFile(path.resolve(__dirname, root, fileName), (err, data) => {
 				if (err) {
 					return rej(err);
 				}
@@ -13,97 +19,49 @@ class DbConnection {
 		});
 	};
 
-	static writeFileAsync = async (fileName, data) => {
+	static writeFileAsync = async (fileName, data, root) => {
 		return await new Promise((res, rej) => {
-			fs.writeFile(path.resolve(__dirname, "jsonDB", fileName), data, (err) => {
-				if (err) {
-					return rej(err);
+			fs.writeFile(
+				path.resolve(__dirname, root, fileName),
+				data,
+				(err) => {
+					if (err) {
+						return rej(err);
+					}
+					res();
 				}
-				res();
-			});
+			);
 		});
 	};
-	fileName;
-	filePath;
 
-	constructor(fileName, modelClass) {
-		this.fileName = fileName;
-		this.filePath = path.resolve(__dirname, "jsonDB", fileName);
-		this.modelClass = modelClass;
-		if (!fs.existsSync(this.filePath)) {
-			throw new Error(`${this.fileName} doesn't exist.`);
-		}
-	}
-
-	async create(model) {
+	static init() {
 		try {
-			const data = await this.read();
-			data.push(model);
-			const retVal = await DbConnection.writeFileAsync(this.filePath, JSON.stringify(data));
-			if (retVal) {
-				throw retVal;
+			if (!fs.existsSync(DbConnection.dbRoot)) {
+				fs.mkdirSync(DbConnection.dbRoot);
 			}
-			return true
-		} catch (error) {
-			console.error(error);
-			return false;
+		} catch (err) {
+			console.error(err);
+			return;
 		}
-	}
 
-	async read(query = {}) {
 		try {
-			const readBuffer = await DbConnection.readFileAsync(this.filePath);
-			const readJson = readBuffer.toString();
-			const readResult = JSON.parse(readJson);
-			const objKeys = Object.key(query);
-			const keys = this.modelClass.uniqueKeys.length > 0 ? [...this.modelClass.uniqueKeys, ...objKeys] : objKeys
-			const selectionFunctions = keys.map(key => ((model) => model[key] === query[key]))
-			const retVal = readResult.filter(model => selectionFunctions.every(fn => fn(model)));
-			return retVal.map(data => new this.modelClass(data));
-		} catch (error) {
-			console.error(error);
-			return [];
-		}
-	}
-
-	async update(updatedModel) {
-		try {
-			const data = await this.read();
-
-			const updatedData = data.map(model => {
-				if (model.id === updatedModel.id) {
-					return { ...model, ...updatedModel };
-				}
-				return model
-			});
-			const retVal = await DbConnection.writeFileAsync(this.filePath, JSON.stringify(updatedData));
-			if (retVal) {
-				throw retVal;
+			if (!fs.existsSync(DbConnection.tablesRoot)) {
+				fs.mkdirSync(DbConnection.tablesRoot);
 			}
-			return true
-		} catch (error) {
-			console.error(error);
-			return false;
+		} catch (err) {
+			console.error(err);
 		}
-	}
 
-	async delete(query = {}) {
 		try {
-			const readBuffer = await DbConnection.readFileAsync(this.filePath);
-			const readJson = readBuffer.toString();
-			const readResult = JSON.parse(readJson);
-			const selectionFunctions = Object.keys(query).map(key => ((model) => model[key] === query[key]))
-			const newData = readResult.filter(model => !selectionFunctions.every(fn => fn(model)));
-			const retVal = await DbConnection.writeFileAsync(this.filePath, JSON.stringify(newData));
-			if (retVal) {
-				throw retVal;
+			if (!fs.existsSync(DbConnection.configsRoot)) {
+				fs.mkdirSync(DbConnection.configsRoot);
 			}
-			return true
-		} catch (error) {
-			console.error(error);
-			return false;
+		} catch (err) {
+			console.error(err);
 		}
+
+		return this;
 	}
 }
 
-module.exports = DbConnection;
+module.exports = DbConnection.init();
